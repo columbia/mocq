@@ -1,0 +1,53 @@
+## Joern / JavaScript query harness (CPGQL, Scala)
+
+The CPG for the target project is ALREADY loaded on the server. Do NOT call `importCode` / `importCpg`.
+Write the query in exactly this shape. Do not deviate from the skeleton.
+
+### Grammar sketch
+```
+<query>   ::= <defs> <find>
+<defs>    ::= "def mocqSource = {" <trav> "}"
+              "def mocqSink = {"   <trav> "}"
+              [ "def mocqSanitizer = {" <trav> "}" ]
+<find>    ::= "def findVulnerability() = " <flow> ".l"
+<flow>    ::= "mocqSink.reachableByFlows(mocqSource)"
+              [ ".filterNot(_.elements.exists(n => mocqSanitizer.contains(n)))" ]
+<trav>    ::= "cpg" "." <nodeStep> ( "." <step> )*        // an Iterator[CfgNode]
+<nodeStep>::= "call" | "identifier" | "literal" | "parameter" | "assignment" | "method" ...
+<step>    ::= ".name(\"<re>\")" | ".code(\"<re>\")" | ".methodFullName(\"<re>\")"
+            | ".where(_. <trav-pred> )" | ".filter(n => <bool> )" | ".filterNot(...)"
+            | ".argument" | ".argument(<n>)" | ".receiver" | ".ast" | ".astChildren"
+            | ".method" | ".caller" | ".callee" | ".file" | ".dedup"
+```
+
+- `mocqSource` / `mocqSink` MUST be top-level `def`s returning an Iterator of `CfgNode`.
+- Keep them GENERAL: match on framework request objects and call/member names, never on an identifier
+  or route string copied from a sample file.
+- End `findVulnerability` with `.l`; the result must expose `.location`.
+
+### Curated step subset
+Sources — user-controlled input
+- Express/Koa/Fastify request: `cpg.call.code("(?i).*\\breq(uest)?\\.(query|params|body|headers|cookies)\\b.*")`
+  or member access: `cpg.fieldAccess.where(_.fieldIdentifier.canonicalName("query|params|body|headers|cookies"))`
+- process/env: `cpg.call.code("(?i)process\\.argv.*|process\\.env\\..*")`
+- DOM (client-side): `cpg.call.code("(?i).*(location|document\\.URL|document\\.cookie).*")`
+- `RemoteFlowSource` is NOT available in Joern — model sources explicitly as above.
+
+Sinks — dangerous operations
+- SQLi/NoSQLi: `cpg.call.name("(?i)query|execute|exec|raw|aggregate|find|findOne")` on a db client;
+  keep the string/object argument via `.argument(1)` / `.argument`
+- command injection: `cpg.call.code("(?i).*child_process\\.(exec|execSync|spawn|spawnSync).*")`
+- path traversal: `cpg.call.code("(?i).*(fs\\.(readFile|writeFile|createReadStream|open)|res\\.sendFile)\\b.*")`
+- XSS: `cpg.call.code("(?i).*(res\\.(send|write|end)|\\.innerHTML)\\b.*")` and template output
+
+Sanitizers / barriers  (in `mocqSanitizer`, filtered from flows manually)
+- SQL: parameterised query (placeholder + params array present); ORM query builders
+- command: `cpg.call.code("(?i).*shell-quote.*")`, allow-list `includes(...)`
+- path: `cpg.call.code("(?i).*path\\.(resolve|basename|normalize).*")` + `startsWith` containment
+- generic: `Number(...)`, `parseInt(...)`, `typeof x === \"number\"`, `escape-html` / `he.encode`
+
+Flow & helpers
+- `sink.reachableBy(source)` -> reachable sink nodes; `sink.reachableByFlows(source)` -> `Iterator[Path]`
+- `path.elements` = node list, each has `.code`, `.lineNumber`, `.file.name`
+- `.location` -> `filename`, `lineNumber`; `.l` materialises; `.dedup` removes duplicates
+- `cpg.method.name("foo")` to recover an unresolved call target

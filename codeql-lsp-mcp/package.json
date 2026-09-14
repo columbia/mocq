@@ -1,0 +1,23 @@
+{
+    "name": "codeql-lsp-mcp",
+    "version": "0.1.0",
+    "description": "MCP server wrapper for CodeQL Language Server Protocol",
+    "main": "dist/index.js",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "dev": "tsx src/index.ts"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.26.0",
+        "vscode-jsonrpc": "^8.2.0",
+        "vscode-languageserver": "^9.0.1",
+        "vscode-languageserver-protocol": "^3.17.5"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "tsx": "^4.7.0",
+        "typescript": "^5.3.3"
+    }
+}

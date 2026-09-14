@@ -1,0 +1,29 @@
+# CodeQL Query — false-positive elimination
+
+## Objective
+The current query for **{{VULN_NAME}}** ({{VULN_ID}}) in **{{LANGUAGE}}** flags SAFE code. Add
+sanitizers / barriers so those exact source→sink paths no longer report, WITHOUT losing any real
+detection. Write the revised query to `{{WIP_PATH}}`.
+
+## False positives (safe files) and the path the query took
+{{FALSE_POSITIVE_PATHS}}
+
+## Current query
+```ql
+{{CURRENT_QUERY}}
+```
+
+{{HARNESS}}
+
+## How to fix
+- For each path above, identify what makes that code actually safe (parameterised query, numeric
+  coercion, encoder, containment check, allow-list, ...) and encode it in `mocqBarrier` — or tighten
+  `mocqSink` so it doesn't match that call shape.
+- Prefer a general barrier (the sanitizer API / node kind) over excluding a specific file or line.
+- Do NOT change `@name`, `@id`, `@kind`, `@precision`, or the alert message. Keep the path-node
+  `select`. Keep `mocqSource` / `mocqSink` as top-level predicates.
+
+## Steps
+1. `Write` the revised query to `{{WIP_PATH}}`.
+2. `mcp__codeql__codeql_compile({"query_path": "{{WIP_PATH}}"})`; fix until clean.
+3. Stop after a clean compile. Do NOT evaluate against any database. Edit only `{{WIP_PATH}}`.

@@ -1,0 +1,22 @@
+You extracted a catalog of {{FULL_COUNT}} constructs from {{ENGINE_LABEL}} (below). This
+catalog is used as a harness for an LLM agent that writes web-vulnerability detection queries
+(SQL injection, XSS, command injection, path traversal, and similar source -> sink
+taint-tracking patterns, plus sanitizer/barrier detection) — NOT for general-purpose use of
+the engine.
+
+## Full catalog
+```json
+{{FULL_CATALOG_JSON}}
+```
+
+## Task (MoCQ §3.1.2 — DSL subsetting)
+Select the compact, high-expressivity SUBSET of constructs that covers essentially every
+source/sink/sanitizer taint-tracking query an agent would need for the vulnerability
+classes above — dropping constructs that are redundant with a kept one, overly specialized,
+or not relevant to taint-tracking queries. Prefer keeping one canonical way to do each
+thing over multiple near-duplicate constructs.
+
+## Output format — EXACTLY one fenced block, nothing else outside it
+```json
+{"keep": ["stepName1", "stepName2", "..."], "justification": "1-3 sentences on the selection criteria"}
+```

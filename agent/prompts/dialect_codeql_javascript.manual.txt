@@ -1,0 +1,57 @@
+## CodeQL / JavaScript query harness
+
+Write the query in exactly this shape. Do not deviate from the skeleton.
+
+### Grammar sketch (fill the <...> holes)
+```
+<metadata block>              # keep @name @id @kind @precision @tags unchanged from the seed
+import javascript
+import semmle.javascript.dataflow.DataFlow
+import semmle.javascript.dataflow.TaintTracking
+import semmle.javascript.security.dataflow.RemoteFlowSources
+import semmle.javascript.Concepts
+
+predicate mocqSource(DataFlow::Node n) { <source condition> }      # REQUIRED, top-level
+predicate mocqSink(DataFlow::Node n)   { <sink condition> }        # REQUIRED, top-level
+predicate mocqBarrier(DataFlow::Node n) { <sanitizer condition> }  # optional
+
+module MocqConfig implements DataFlow::ConfigSig {
+  predicate isSource(DataFlow::Node n) { mocqSource(n) }
+  predicate isSink(DataFlow::Node n)   { mocqSink(n) }
+  predicate isBarrier(DataFlow::Node n) { mocqBarrier(n) }         # omit if no barrier
+}
+module MocqFlow = TaintTracking::Global<MocqConfig>;
+import MocqFlow::PathGraph
+
+from MocqFlow::PathNode source, MocqFlow::PathNode sink
+where MocqFlow::flowPath(source, sink)
+select sink.getNode(), source, sink, "<same message string as the seed>", source.getNode(), "user-provided value"
+```
+
+- `mocqSource` / `mocqSink` MUST be top-level named predicates (the validator decomposes the query
+  through them). Put the real logic there, not inline in the module.
+- Keep them GENERAL: no string literals copied from any specific sample file (route strings, variable
+  names, package-local identifiers). Match on framework APIs and node kinds.
+
+### Curated API subset (use these; avoid the rest of the DSL)
+Sources
+- `n instanceof RemoteFlowSource` — Express `req.query`/`req.params`/`req.body`/`req.headers`/`req.cookies`,
+  Koa/Hapi/Fastify equivalents, plus DOM sources (`location`, `document.*`) for client-side.
+- `RemoteFlowSource::Range` — subclass for an unmodelled framework.
+- `DataFlow::moduleImport("...")` / `API::moduleImport("...")` for precise unmodelled sources.
+
+Sinks (via `semmle.javascript.Concepts` and framework libs)
+- `SqlInjection::Sink` / a `DataFlow::CallNode` to `query`/`execute` on a db client — SQLi/NoSQLi
+- `SystemCommandExecution c | n = c.getACommandArgument()` — command injection (`child_process.exec*`)
+- `FileSystemReadAccess`/`FileSystemWriteAccess` path args, `res.sendFile` — path traversal
+- `Xss::Sink` / response `write`/`end`, `.innerHTML`, template output without escaping — reflected XSS
+
+Barriers / sanitizers
+- parameterised query (placeholder string + params array argument present)
+- `Number(...)` / `parseInt(...)` coercion, `typeof x === "number"` guard
+- `shell-quote`, `path.resolve` + `startsWith` containment, `path.basename`
+- HTML encoders (`escape-html`, `he.encode`), allow-list `includes(...)` checks
+
+Node helpers
+- `n.asExpr()`, `n.getFile()`, `n.getStartLine()`, `DataFlow::valueNode(e)`
+- `TaintTracking::localTaint(a, b)` for a missing local hop

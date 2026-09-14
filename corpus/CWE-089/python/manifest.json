@@ -1,0 +1,31 @@
+{
+  "cwe": "CWE-089",
+  "language": "python",
+  "source_root": ".",
+  "files": [
+    {
+      "path": "vuln/flask_sqli_concat.py",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/flask_sqli_fstring.py",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/flask_sqli_percent.py",
+      "label": "vulnerable"
+    },
+    {
+      "path": "safe/flask_int_cast.py",
+      "label": "safe"
+    },
+    {
+      "path": "safe/flask_param.py",
+      "label": "safe"
+    },
+    {
+      "path": "safe/static_query.py",
+      "label": "safe"
+    }
+  ]
+}

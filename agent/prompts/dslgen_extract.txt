@@ -1,0 +1,32 @@
+You are building a reference catalog of {{ENGINE_LABEL}}, for a downstream system that writes
+vulnerability-detection queries against it.
+
+Below is raw material: ({{SCAN_COUNT}} candidate declarations scraped from the engine's own
+library source, and — if fetched successfully — text from its public docs). It is noisy and
+incomplete on purpose; your job is to turn it into a clean, deduplicated catalog.
+
+## Source-scanned candidates
+{{SCAN_MATERIAL}}
+
+## Public docs (best-effort; may be empty)
+{{DOCS_MATERIAL}}
+
+## Task
+1. Produce a deduplicated catalog of the constructs that are actually useful for writing a
+   source -> sink (-> sanitizer) taint-tracking query: ways to select a starting point
+   (e.g. a traversal-source step, or a class/predicate identifying attacker-controlled data),
+   filter/predicate constructs, dataflow/taint-tracking constructs, and structural
+   navigation. Drop anything clearly irrelevant to query-writing (internal/plumbing
+   declarations, test helpers, deprecated aliases).
+2. Produce a short skeleton showing the general shape of a well-formed query built from these
+   constructs (for a traversal DSL: source -> chained steps -> a flow-finding call; for a
+   predicate/class-based DSL: the import + class/predicate definitions + select-clause shape).
+
+## Output format — EXACTLY two fenced blocks, nothing else outside them
+```json
+[{"step": "name", "category": "source|filter|dataflow|structural|other", "signature": "...", "description": "one line"}]
+```
+```text
+<query>      ::= ...
+...
+```

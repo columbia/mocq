@@ -1,0 +1,18 @@
+You are analyzing ONE known-vulnerable file for {{VULN_NAME}} ({{VULN_ID}}) in {{LANGUAGE}}.
+
+{{VULN_DESC}}
+
+## File: {{EXAMPLE_PATH}}
+```{{LANG_TAG}}
+{{EXAMPLE_CODE}}
+```
+
+Produce a short detection plan — NOT code, just plain-text analysis — covering:
+1. The dangerous operation (which call/sink is unsafe here, and why).
+2. The user-controlled entry point (where attacker-influenced data enters).
+3. The path connecting them (how the tainted value reaches the dangerous operation — through
+   which variables/calls).
+4. What sanitization or validation is missing (if any exists but is insufficient, say so).
+
+Answer in at most 6 short bullet lines. Do not write any query code, and do not repeat the file
+back verbatim — just the analysis.

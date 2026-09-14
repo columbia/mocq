@@ -1,0 +1,62 @@
+## CodeQL / Java query harness
+
+Write the query in exactly this shape. Do not deviate from the skeleton.
+
+### Grammar sketch (fill the <...> holes)
+```
+<metadata block>              # keep @name @id @kind @precision @tags unchanged from the seed
+import java
+import semmle.code.java.dataflow.DataFlow
+import semmle.code.java.dataflow.TaintTracking
+import semmle.code.java.dataflow.FlowSources
+import semmle.code.java.security.Sanitizers
+
+predicate mocqSource(DataFlow::Node n) { <source condition> }      # REQUIRED, top-level
+predicate mocqSink(DataFlow::Node n)   { <sink condition> }        # REQUIRED, top-level
+predicate mocqBarrier(DataFlow::Node n) { <sanitizer condition> }  # optional
+
+module MocqConfig implements DataFlow::ConfigSig {
+  predicate isSource(DataFlow::Node n) { mocqSource(n) }
+  predicate isSink(DataFlow::Node n)   { mocqSink(n) }
+  predicate isBarrier(DataFlow::Node n) { mocqBarrier(n) }         # omit if no barrier
+}
+module MocqFlow = TaintTracking::Global<MocqConfig>;
+import MocqFlow::PathGraph
+
+from MocqFlow::PathNode source, MocqFlow::PathNode sink
+where MocqFlow::flowPath(source, sink)
+select sink.getNode(), source, sink, "<same message string as the seed>", source.getNode(), "user-provided value"
+```
+
+- `mocqSource` / `mocqSink` MUST be top-level named predicates (the validator decomposes the query
+  through them). Put the real logic there, not inline in the module.
+- Keep them GENERAL: no string literals copied from any specific sample file (class names, method
+  names, endpoint strings). Match on framework types and API shapes.
+- NOTE: databases are built with `--build-mode none` (source only, no dependency resolution), so
+  third-party library types may be unresolved. Prefer matching by simple type name / method name
+  (`Method.hasName(...)`, `RefType.hasQualifiedName("java.sql", ...)`) and fall back to
+  `MethodCall.getMethod().getName()` when qualified names are missing.
+
+### Curated API subset (use these; avoid the rest of the DSL)
+Sources
+- `n instanceof RemoteFlowSource` — Servlet `HttpServletRequest#getParameter/#getHeader/#getQueryString`,
+  Spring `@RequestParam`/`@PathVariable`/`@RequestBody` params, JAX-RS `@QueryParam`, etc.
+- `RemoteFlowSource` subclass or `ThreatModelFlowSource` for an unmodelled entrypoint.
+- fallback: a `Parameter` of a method annotated with a request-mapping annotation.
+
+Sinks
+- SQLi: `MethodCall` to `Statement`/`PreparedStatement` `execute*`/`addBatch`, `Connection.prepareStatement`,
+  JPA/Hibernate `createQuery`/`createNativeQuery` — argument 0.
+- command injection: `Runtime.exec`, `ProcessBuilder` constructor / `command(...)` args.
+- path traversal: `new File(...)`, `Paths.get(...)`, `Files.*`, `FileInputStream`/`FileOutputStream` path args.
+- XSS: `HttpServletResponse.getWriter().print/write/println`, unescaped model attributes.
+
+Barriers / sanitizers
+- `PreparedStatement` bind-parameter path (value flows into `setString`/`setInt`, not the SQL string)
+- integer/enum coercion (`Integer.parseInt`, `Long.parseLong`), `SanitizedExpr` from `semmle.code.java.security.Sanitizers`
+- allow-list `equals`/`contains` guard, `File.getCanonicalPath()` + prefix check
+- `org.owasp.encoder.Encode.*`, `StringEscapeUtils.*`
+
+Node helpers
+- `n.asExpr()`, `n.getLocation()`, `DataFlow::exprNode(e)`, `DataFlow::getInstanceArgument(call)`
+- `TaintTracking::localTaint(a, b)` for a missing local hop

@@ -1,0 +1,39 @@
+{
+  "vuln": {
+    "id": "CWE-079",
+    "name": "Reflected Cross-Site Scripting",
+    "description": "User-controlled request input is written into an HTTP response or HTML page without HTML-encoding or templating auto-escaping, so an attacker can inject script that runs in a victim's browser.",
+    "languages": [
+      "python",
+      "javascript",
+      "java",
+      "php"
+    ]
+  },
+  "engine": "codeql",
+  "seed_query": {
+    "codeql": {
+      "python": "${CODEQL_SEARCH_PATH}/python/ql/src/Security/CWE-079/ReflectedXss.ql",
+      "javascript": "${CODEQL_SEARCH_PATH}/javascript/ql/src/Security/CWE-079/ReflectedXss.ql",
+      "java": "${CODEQL_SEARCH_PATH}/java/ql/src/Security/CWE/CWE-079/XSS.ql"
+    },
+    "joern": {
+      "php": "agent/seeds/joern/php.scala",
+      "javascript": "agent/seeds/joern/javascript.scala",
+      "python": "agent/seeds/joern/python.scala",
+      "java": "agent/seeds/joern/java.scala"
+    }
+  },
+  "benchmark": {
+    "python": "corpus/CWE-079/python/manifest.json",
+    "javascript": "corpus/CWE-079/javascript/manifest.json",
+    "java": "corpus/CWE-079/java/manifest.json",
+    "php": "corpus/CWE-079/php/manifest.json"
+  },
+  "synth_agent": {
+    "model_provider": "claude_cli",
+    "cli_max_turns": 20,
+    "cli_timeout": 1800,
+    "temperature": 0.1
+  }
+}

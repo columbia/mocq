@@ -1,0 +1,18 @@
+# CodeQL Compile Fix
+
+The query at `{{WIP_PATH}}` does not compile. Fix it so it compiles cleanly. Change as little as
+possible — keep the detection logic, metadata, and `select` message intact.
+
+## Compiler output
+```
+{{COMPILE_ERRORS}}
+```
+
+## Steps
+1. Read `{{WIP_PATH}}`.
+2. Use `mcp__codeql__codeql_diagnostics` and `mcp__codeql__codeql_hover` to find correct predicate
+   signatures and imports.
+3. Write the fixed query back to `{{WIP_PATH}}`.
+4. Re-check with `mcp__codeql__codeql_compile({"query_path": "{{WIP_PATH}}"})`. Repeat until clean, then stop.
+
+Do NOT evaluate the query against any database. Edit only `{{WIP_PATH}}`.

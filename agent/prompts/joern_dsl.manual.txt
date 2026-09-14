@@ -1,0 +1,60 @@
+## CPGQL DSL reference (Joern, Scala) — curated subset
+
+A query is Scala evaluated against a pre-loaded CPG. Do NOT `importCode` / `importCpg`.
+
+### Grammar
+```
+<query>      ::= <def>* <find>
+<def>        ::= "def" <name> ( "=" | "= {" ) <traversal> ( "}" )?
+<find>       ::= "def findVulnerability() = " <flow-expr> ".l"
+<flow-expr>  ::= <sinkTrav> ".reachableByFlows(" <sourceTrav> ")"
+                 [ ".filterNot(_.elements.exists(n => mocqSanitizer.contains(n)))" ]
+<traversal>  ::= "cpg" "." <root-step> ( "." <step> )*
+<root-step>  ::= "call" | "method" | "identifier" | "literal" | "parameter"
+               | "fieldAccess" | "assignment" | "typeDecl" | "argument" | "ret"
+<step>       ::= <filter-step> | <map-step> | <flow-step>
+<filter-step>::= ".name(" <re> ")" | ".code(" <re> ")" | ".methodFullName(" <re> ")"
+               | ".nameExact(" <str>+ ")" | ".where(_. <traversal-pred> )"
+               | ".whereNot(_. …)" | ".filter(n => <bool> )" | ".filterNot(…)"
+               | ".isCall" | ".isLiteral" | ".isIdentifier"
+<map-step>   ::= ".argument" | ".argument(" <int> ")" | ".receiver" | ".name" | ".code"
+               | ".method" | ".file" | ".file.name" | ".lineNumber" | ".location"
+               | ".ast" | ".astChildren" | ".astParent" | ".inCall" | ".callee" | ".caller"
+<flow-step>  ::= ".reachableBy(" <traversal> ")"        // -> the reachable nodes of the receiver
+               | ".reachableByFlows(" <traversal> ")"  // -> Iterator[Path], full source->sink paths
+```
+
+### Steps you may use (signatures)
+Node roots
+- `cpg.call: Iterator[Call]`              — every call site
+- `cpg.method: Iterator[Method]`          — every method/function
+- `cpg.identifier: Iterator[Identifier]`  — variable references
+- `cpg.literal: Iterator[Literal]`        — string / numeric literals
+- `cpg.parameter: Iterator[MethodParameterIn]`
+- `cpg.fieldAccess: Iterator[Call]`       — `a.b` / `a["b"]` access
+- `cpg.assignment: Iterator[Call]`        — `<operator>.assignment` calls
+
+Filters (all regex unless `…Exact`)
+- `.name("re")` `.nameExact("a","b")` `.code("re")` `.methodFullName("re")` `.typeFullName("re")`
+- `.where(_.<traversal returning >0 rows>)`  `.whereNot(...)`  `.filter(n => Boolean)`  `.filterNot(...)`
+- `.argument` (all args) `.argument(1)` (1-based) `.receiver` `.inCall` (enclosing call)
+
+Navigation
+- `.method` (enclosing method)  `.caller` / `.callee` (call graph)  `.ast` / `.astChildren` / `.astParent`
+- `.file` -> `Iterator[File]`, then `.name` -> path string
+- `.lineNumber: Option[Int]`   `.location` -> `NewLocation(filename, lineNumber, …)`
+
+Data flow (implicits are pre-imported on the server)
+- `sink.reachableBy(source)`      -> `Iterator[CfgNode]` : receiver nodes tainted by `source`
+- `sink.reachableByFlows(source)` -> `Iterator[Path]`   : each `Path.elements: List[AstNode]`,
+  every element has `.code`, `.lineNumber`, `.file.name`
+- `node.reachableBy(source)` also works on a broad node set to see how far taint spreads
+
+Materialisers
+- `.l` / `.toList`   `.size`   `.dedup`   `.head` / `.headOption`   `.map(…)` / `.flatMap(…)`
+
+### Rules
+- End `findVulnerability` with `.l`.
+- `mocqSource` / `mocqSink` MUST be top-level `def`s (the validator decomposes the query through them).
+- Regex is Java regex; escape `$` as `\\$`, use `(?i)` for case-insensitive.
+- If a call target is unresolved, match by short name: `cpg.call.name("theName")`.

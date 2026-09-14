@@ -1,0 +1,20 @@
+## Joern / Python source/sink patterns
+
+Sources — user-controlled input
+- Flask/Django/FastAPI request objects: `cpg.fieldAccess.code("(?i).*\\brequest\\.(args|form|values|json|data|files|headers|cookies|GET|POST)\\b.*")`
+- request param access: `cpg.call.name("(?i)get|getlist").where(_.receiver.code("(?i).*request\\.(args|form|headers).*"))`
+- env / argv: `cpg.call.code("(?i).*(os\\.environ|sys\\.argv|os\\.getenv).*")`
+
+Sinks
+- SQLi: `cpg.call.name("(?i)execute|executemany|executescript|raw|extra").argument`
+  (DB-API cursors, Django `.raw()` / `.extra()`, SQLAlchemy `text()`)
+- command injection: `cpg.call.name("(?i)system|popen|call|run|check_output|check_call|Popen").argument`
+  (`os.*`, `subprocess.*`)
+- path traversal: `cpg.call.name("(?i)open|remove|unlink|rename|listdir|makedirs").argument`
+- code injection: `cpg.call.name("(?i)eval|exec|compile").argument`
+- XSS: response body / template render without autoescape
+
+Sanitizers (put in `mocqSanitizer`)
+- `cpg.call.name("(?i)int|float|str\\.isdigit|shlex\\.quote|quote_plus|escape|secure_filename")`
+- parameterised query (`?` / `%s` placeholders + a params argument present)
+- `os.path.abspath` + a `startswith` containment check

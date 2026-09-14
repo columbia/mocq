@@ -1,0 +1,26 @@
+# CodeQL Query Merge
+
+## Objective
+You produced {{N_QUERIES}} per-example CodeQL queries for **{{VULN_NAME}}** ({{VULN_ID}}) in
+**{{LANGUAGE}}**. Merge them into ONE query at `{{WIP_PATH}}` that preserves every detection they
+collectively make — the union of their `mocqSource` conditions and the union of their `mocqSink`
+conditions — while staying a single clean taint-tracking query.
+
+## The queries to merge
+{{QUERIES}}
+
+{{HARNESS}}
+
+## Rules
+- One `predicate mocqSource` = disjunction of all the inputs' source conditions; likewise `mocqSink`.
+  Merge `mocqBarrier` conditions too (a node barred by ANY input stays barred).
+- Do NOT change `@name`, `@id`, `@kind`, `@precision`, or the alert message string; keep
+  `@kind path-problem` and the path-node `select`.
+- Deduplicate: fold equivalent conditions together, don't just OR raw text.
+- Must compile; keep it fast.
+
+## Steps
+1. `Write` the merged query to `{{WIP_PATH}}`.
+2. `mcp__codeql__codeql_compile({"query_path": "{{WIP_PATH}}"})`; fix with
+   `mcp__codeql__codeql_diagnostics` / `mcp__codeql__codeql_hover` until clean.
+3. Stop after a clean compile. Do NOT evaluate against any database. Edit only `{{WIP_PATH}}`.

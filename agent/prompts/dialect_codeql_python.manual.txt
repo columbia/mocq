@@ -1,0 +1,60 @@
+## CodeQL / Python query harness
+
+Write the query in exactly this shape. Do not deviate from the skeleton.
+
+### Grammar sketch (fill the <...> holes)
+```
+<metadata block>              # keep @name @id @kind @precision @tags unchanged from the seed
+import python
+import semmle.python.dataflow.new.DataFlow
+import semmle.python.dataflow.new.TaintTracking
+import semmle.python.dataflow.new.RemoteFlowSources
+import semmle.python.Concepts
+import semmle.python.ApiGraphs
+
+predicate mocqSource(DataFlow::Node n) { <source condition> }      # REQUIRED, top-level
+predicate mocqSink(DataFlow::Node n)   { <sink condition> }        # REQUIRED, top-level
+predicate mocqBarrier(DataFlow::Node n) { <sanitizer condition> }  # optional
+
+module MocqConfig implements DataFlow::ConfigSig {
+  predicate isSource(DataFlow::Node n) { mocqSource(n) }
+  predicate isSink(DataFlow::Node n)   { mocqSink(n) }
+  predicate isBarrier(DataFlow::Node n) { mocqBarrier(n) }         # omit if no barrier
+}
+module MocqFlow = TaintTracking::Global<MocqConfig>;
+import MocqFlow::PathGraph
+
+from MocqFlow::PathNode source, MocqFlow::PathNode sink
+where MocqFlow::flowPath(source, sink)
+select sink.getNode(), source, sink, "<same message string as the seed>", source.getNode(), "user-provided value"
+```
+
+- `mocqSource` / `mocqSink` MUST be top-level named predicates (the validator decomposes the query
+  through them). Put the real logic there, not inline in the module.
+- Keep them GENERAL: no string literals copied from any specific sample file (variable names, class
+  names, route strings). Match on framework APIs and node kinds, not on identifiers.
+
+### Curated API subset (use these; avoid the rest of the DSL)
+Sources
+- `n instanceof RemoteFlowSource` — request params/body/headers/cookies for Django, Flask, FastAPI,
+  Tornado, aiohttp, bottle, etc. This is the default web source.
+- `RemoteFlowSource::Range` — subclass to add a framework not yet modelled.
+- `API::moduleImport("flask").getMember("request")....` — `ApiGraphs` for precise, unmodelled sources.
+
+Sinks (via `semmle.python.Concepts`)
+- `SqlExecution sql | n = sql.getSql()` — SQLi
+- `SystemCommandExecution c | n = c.getCommand()` — command injection
+- `FileSystemAccess fa | n = fa.getAPathArgument()` — path traversal
+- `CodeExecution ce | n = ce.getCode()` — code injection
+- `Http::Server::HttpResponse r | n = r.getBody()` — reflected XSS (no autoescape)
+- generic: a `DataFlow::CallCfgNode` whose callee name matches an execute/render family
+
+Barriers / sanitizers
+- parameterised query call (2nd positional / `params=` argument present) → the string arg is safe
+- `n instanceof NumericLiteralNode` or a preceding `int(...)`/`float(...)` cast
+- `shlex.quote`, `werkzeug.utils.secure_filename`, `os.path.abspath` + `startswith` containment check
+- `n instanceof DataFlow::Node and n = API::builtin("...").getACall()` allow-list checks
+
+Node helpers
+- `n.asExpr()`, `n.getLocation()`, `n.getScope()`, `DataFlow::exprNode(e)`, `DataFlow::localFlow`
+- `TaintTracking::localTaint(a, b)` for a small manual hop when a modelled step is missing

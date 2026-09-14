@@ -1,0 +1,31 @@
+{
+  "cwe": "CWE-089",
+  "language": "javascript",
+  "source_root": ".",
+  "files": [
+    {
+      "path": "vuln/express_knex_raw.js",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/express_mysql_concat.js",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/express_mysql_template.js",
+      "label": "vulnerable"
+    },
+    {
+      "path": "safe/express_mysql_param.js",
+      "label": "safe"
+    },
+    {
+      "path": "safe/express_number.js",
+      "label": "safe"
+    },
+    {
+      "path": "safe/express_static.js",
+      "label": "safe"
+    }
+  ]
+}

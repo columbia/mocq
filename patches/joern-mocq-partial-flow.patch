@@ -1,0 +1,112 @@
+diff --git a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/language/ExtendedCfgNode.scala b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/language/ExtendedCfgNode.scala
+index cd571cc2a..80d4a4624 100644
+--- a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/language/ExtendedCfgNode.scala
++++ b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/language/ExtendedCfgNode.scala
+@@ -69,6 +69,26 @@ class ExtendedCfgNode(val traversal: Iterator[CfgNode]) extends AnyVal {
+     reachableByInternal(sources)
+   }
+ 
++  /** MoCQ hook: the taint paths that *stalled* before reaching a source (reached a non-source
++    * parameter / unresolved call). Normally discarded by the query engine; exposed here so a
++    * failing `reachableByFlows` query can report how far propagation got and where it broke.
++    */
++  def reachableByPartialFlows[A](sourceTrav: IterableOnce[A], sourceTravs: IterableOnce[A]*)(implicit
++    context: EngineContext
++  ): Iterator[Path] = {
++    val startingPointsWithSources = sourceTravsToStartingPoints(sourceTrav +: sourceTravs*)
++    val sinks                     = traversal.dedup.toList.sortBy(_.id)
++    val engine                    = new Engine(context)
++    engine.backwards(sinks, startingPointsWithSources.map(_.startingPoint))
++    val partials = engine.lastPartialResults
++    engine.shutdown()
++    partials
++      .map(te => Path(removeConsecutiveDuplicates(te.path.filter(_.visible).map(_.node).toVector)))
++      .filter(_.elements.nonEmpty)
++      .distinctBy(_.elements.map(_.id))
++      .iterator
++  }
++
+   private def removeConsecutiveDuplicates[T](l: Vector[T]): List[T] = {
+     l.headOption.map(x => x :: l.sliding(2).collect { case Seq(a, b) if a != b => b }.toList).getOrElse(List())
+   }
+diff --git a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/Engine.scala b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/Engine.scala
+index 0e963c9c8..731ba54c7 100644
+--- a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/Engine.scala
++++ b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/Engine.scala
+@@ -34,6 +34,13 @@ class Engine(context: EngineContext) {
+     */
+   private val mainResultTable: mutable.Map[TaskFingerprint, List[TableEntry]] = mutable.Map()
+   private var numberOfTasksRunning: Int                                       = 0
++
++  /** MoCQ hook: stalled paths from the most recent `backwards` call — paths that could not be
++    * connected to a source and are normally discarded. `reachableByPartialFlows` reads this to
++    * report how far a failing taint flow propagated.
++    */
++  var lastPartialResults: List[ReachableByResult]         = List()
++  private val partialAccumulator: mutable.Buffer[ReachableByResult] = mutable.Buffer()
+   private val started: mutable.HashSet[TaskFingerprint]                       = mutable.HashSet[TaskFingerprint]()
+   private val held: mutable.Buffer[ReachableByTask]                           = mutable.Buffer()
+ 
+@@ -58,6 +65,8 @@ class Engine(context: EngineContext) {
+     numberOfTasksRunning = 0
+     started.clear()
+     held.clear()
++    lastPartialResults = List()
++    partialAccumulator.clear()
+   }
+ 
+   private def createOneTaskPerSink(sinks: List[CfgNode]) = {
+@@ -81,6 +90,7 @@ class Engine(context: EngineContext) {
+       submitTasks(newTasks, sources)
+       val newResults = taskSummary.tableEntries
+       addEntriesToMainTable(newResults)
++      partialAccumulator ++= taskSummary.partials // MoCQ hook
+     }
+ 
+     def addEntriesToMainTable(entries: Vector[(TaskFingerprint, TableEntry)]): Unit = {
+@@ -118,6 +128,7 @@ class Engine(context: EngineContext) {
+         (taskFinishTimeSec - startTimeSec) + " seconds"
+     )
+     new HeldTaskCompletion(held.toList, mainResultTable).completeHeldTasks()
++    lastPartialResults = partialAccumulator.toList // MoCQ hook: expose stalled paths
+     val dedupResult          = deduplicateFinal(extractResultsFromTable(sinks))
+     val allDoneTimeSec: Long = System.currentTimeMillis / 1000
+ 
+diff --git a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/TaskSolver.scala b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/TaskSolver.scala
+index 784ab9ee4..9c6262f28 100644
+--- a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/TaskSolver.scala
++++ b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/TaskSolver.scala
+@@ -41,7 +41,9 @@ class TaskSolver(task: ReachableByTask, context: EngineContext, sources: Set[Cfg
+     }
+     val (partial, complete) = finalResults.partition(_.partial)
+     val newTasks            = new TaskCreator(context).createFromResults(partial)
+-    TaskSummary(complete.flatMap(r => resultToTableEntries(r)), newTasks)
++    // MoCQ hook: `partial` is normally consumed only to spawn `newTasks` and then dropped;
++    // carry it out so the engine can expose stalled paths via `reachableByPartialFlows`.
++    TaskSummary(complete.flatMap(r => resultToTableEntries(r)), newTasks, partial)
+   }
+ 
+   private def resultToTableEntries(r: ReachableByResult): List[(TaskFingerprint, TableEntry)] = {
+diff --git a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/package.scala b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/package.scala
+index 633decc68..58251dc56 100644
+--- a/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/package.scala
++++ b/dataflowengineoss/src/main/scala/io/joern/dataflowengineoss/queryengine/package.scala
+@@ -100,7 +100,17 @@ package object queryengine {
+ 
+   }
+ 
+-  case class TaskSummary(tableEntries: Vector[(TaskFingerprint, TableEntry)], followupTasks: Vector[ReachableByTask])
++  /** @param partials
++    *   MoCQ hook: the stalled paths for this task (reached a non-source parameter / unresolved
++    *   call before hitting a source). Normally only used to spawn follow-up tasks and then
++    *   discarded; carried here so `reachableByPartialFlows` can report how far a failing taint
++    *   flow propagated.
++    */
++  case class TaskSummary(
++    tableEntries: Vector[(TaskFingerprint, TableEntry)],
++    followupTasks: Vector[ReachableByTask],
++    partials: Vector[ReachableByResult] = Vector()
++  )
+   case class TableEntry(path: Vector[PathElement])
+ 
+ }

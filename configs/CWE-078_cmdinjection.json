@@ -1,0 +1,39 @@
+{
+  "vuln": {
+    "id": "CWE-078",
+    "name": "OS Command Injection",
+    "description": "User-controlled request input reaches an OS command execution sink (shell string, subprocess/child_process/Runtime.exec call) without escaping or an allow-list, letting an attacker run arbitrary commands.",
+    "languages": [
+      "python",
+      "javascript",
+      "java",
+      "php"
+    ]
+  },
+  "engine": "codeql",
+  "seed_query": {
+    "codeql": {
+      "python": "${CODEQL_SEARCH_PATH}/python/ql/src/Security/CWE-078/CommandInjection.ql",
+      "javascript": "${CODEQL_SEARCH_PATH}/javascript/ql/src/Security/CWE-078/CommandInjection.ql",
+      "java": "${CODEQL_SEARCH_PATH}/java/ql/src/Security/CWE/CWE-078/ExecTainted.ql"
+    },
+    "joern": {
+      "php": "agent/seeds/joern/php.scala",
+      "javascript": "agent/seeds/joern/javascript.scala",
+      "python": "agent/seeds/joern/python.scala",
+      "java": "agent/seeds/joern/java.scala"
+    }
+  },
+  "benchmark": {
+    "python": "corpus/CWE-078/python/manifest.json",
+    "javascript": "corpus/CWE-078/javascript/manifest.json",
+    "java": "corpus/CWE-078/java/manifest.json",
+    "php": "corpus/CWE-078/php/manifest.json"
+  },
+  "synth_agent": {
+    "model_provider": "claude_cli",
+    "cli_max_turns": 20,
+    "cli_timeout": 1800,
+    "temperature": 0.1
+  }
+}

@@ -1,0 +1,51 @@
+# CodeQL Query Synthesis — one example
+
+## Objective
+Write a CodeQL query for **{{LANGUAGE}}** that detects **{{VULN_NAME}}** ({{VULN_ID}}) and, in
+particular, flags the ONE vulnerable file below. {{VULN_DESC}}
+
+You are given an official seed query for this vulnerability class as a reference. Adapt it — keep the
+detection idea, but produce a single self-contained query at `{{WIP_PATH}}` following the harness.
+
+## The example to catch
+`{{EXAMPLE_PATH}}`
+```{{LANG_TAG}}
+{{EXAMPLE_CODE}}
+```
+
+## Detection plan
+{{DETECTION_PLAN}}
+
+## Program slice (focused view of the same file, if available)
+{{SLICE}}
+
+## Seed query (reference)
+```ql
+{{SEED_QUERY}}
+```
+
+{{HARNESS}}
+
+## Feedback from your previous attempt
+{{FEEDBACK}}
+
+## Rules
+- Do NOT change `@name`, `@id`, `@kind`, `@precision`, or the alert message string.
+- Keep `@kind path-problem` and the path-node `select` shape.
+- Define top-level `predicate mocqSource(DataFlow::Node)` and `predicate mocqSink(DataFlow::Node)` and
+  route the config through them (the validator decomposes your query via these).
+- Keep `mocqSource` / `mocqSink` GENERAL — no identifiers, class names, or route strings copied from
+  the example file. Match framework APIs and node kinds only.
+- The query must compile. Keep it fast: no unbounded recursion, no cartesian products.
+
+## Steps (do these, nothing else — no summary)
+1. Read the example and the seed; decide the source, sink, and any sanitizer for this pattern.
+2. `Write` the full query to `{{WIP_PATH}}`.
+3. `mcp__codeql__codeql_compile({"query_path": "{{WIP_PATH}}"})`; on failure use
+   `mcp__codeql__codeql_diagnostics` / `mcp__codeql__codeql_hover`, fix, write again. Repeat until clean.
+4. Stop after a clean compile. Do NOT evaluate the query against any database.
+
+## Disallowed
+- Running/evaluating the query (`codeql_run_query`, `database analyze`, `query run`).
+- Editing anything other than `{{WIP_PATH}}`.
+- Symlinks, modifying the CodeQL installation, force-killing codeql.

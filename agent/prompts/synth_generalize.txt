@@ -1,0 +1,33 @@
+# CodeQL/CPGQL Query — generalize for recall
+
+## Objective
+The current query for **{{VULN_NAME}}** ({{VULN_ID}}) in **{{LANGUAGE}}** correctly retrieves all its
+known examples, but appears to **overfit** to their specific code rather than the general
+vulnerability pattern. Rewrite it to be general, WITHOUT losing any current detection.
+
+## Overfit signals detected
+{{SIGNALS}}
+
+## Current query
+```ql
+{{CURRENT_QUERY}}
+```
+
+{{HARNESS}}
+
+## How to fix
+- Replace each flagged hardcoded literal/identifier with a framework/API-level condition (a
+  concept, a call-name regex, a type check) that would still match the same example for the
+  *general reason* it is vulnerable — not because of its exact spelling.
+- Replace exact line-number filters or long structural AST chains with a semantic condition.
+- Do NOT change `@name` / `@id` / `@kind` / `@precision` or the alert message. Keep
+  `mocqSource` / `mocqSink` / `mocqSanitizer` as top-level definitions.
+- The rewritten query MUST still retrieve every example it currently retrieves — do not narrow
+  it to fix the overfit signals; broaden the *reasoning*, not remove coverage.
+
+## Steps
+1. Write the generalized query to `{{WIP_PATH}}`.
+2. Compile-check it (`mcp__codeql__codeql_compile` / `mcp__joern__joern_compile` as available for
+   this engine); fix and rewrite until it compiles cleanly.
+3. Stop after a clean compile. Do NOT evaluate the query against any database. Edit only
+   `{{WIP_PATH}}`.

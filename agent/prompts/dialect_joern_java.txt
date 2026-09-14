@@ -1,0 +1,21 @@
+## Joern / Java source/sink patterns
+
+NOTE: `javasrc` is source-based; third-party types are often unresolved, so match by short method
+name (`cpg.call.name("getParameter")`) rather than `methodFullName`.
+
+Sources — user-controlled input
+- Servlet: `cpg.call.name("(?i)getParameter|getParameterValues|getParameterMap|getHeader|getHeaders|getQueryString|getCookies|getInputStream|getReader")`
+- Spring: parameters of a method whose annotation is a request mapping;
+  `cpg.parameter.where(_.method.annotation.name("(?i).*(RequestParam|PathVariable|RequestBody|RequestHeader).*"))`
+- JAX-RS: `@QueryParam` / `@PathParam` / `@FormParam` annotated parameters
+
+Sinks
+- SQLi: `cpg.call.name("(?i)executeQuery|executeUpdate|execute|executeLargeUpdate|addBatch|prepareStatement|prepareCall|createQuery|createNativeQuery").argument`
+- command injection: `cpg.call.name("(?i)exec|command|start").where(_.receiver.code("(?i).*(Runtime|ProcessBuilder).*")).argument`
+- path traversal: `cpg.call.name("(?i)<init>|get|newInputStream|newOutputStream|readAllBytes").where(_.receiver.code("(?i).*(File|Paths|Files|FileInputStream|FileOutputStream).*")).argument`
+- XSS: `cpg.call.name("(?i)print|println|write|append").where(_.receiver.code("(?i).*(getWriter|getOutputStream|response).*")).argument`
+
+Sanitizers (put in `mocqSanitizer`)
+- `cpg.call.name("(?i)setString|setInt|setLong|setObject")`  (PreparedStatement bind = safe)
+- `cpg.call.name("(?i)parseInt|parseLong|valueOf|escapeHtml|escapeSql|encodeForHTML|getCanonicalPath")`
+- allow-list `equals` / `contains` guards on the tainted value

@@ -1,0 +1,31 @@
+{
+  "cwe": "CWE-089",
+  "language": "php",
+  "source_root": ".",
+  "files": [
+    {
+      "path": "vuln/login_concat.php",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/search_interp.php",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/user_concat.php",
+      "label": "vulnerable"
+    },
+    {
+      "path": "safe/stats_static.php",
+      "label": "safe"
+    },
+    {
+      "path": "safe/user_intval.php",
+      "label": "safe"
+    },
+    {
+      "path": "safe/user_prepared.php",
+      "label": "safe"
+    }
+  ]
+}

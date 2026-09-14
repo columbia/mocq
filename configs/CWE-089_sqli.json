@@ -1,0 +1,39 @@
+{
+  "vuln": {
+    "id": "CWE-089",
+    "name": "SQL Injection",
+    "description": "User-controlled request input reaches a SQL/NoSQL query that is built by string construction, with no parameterisation or sanitisation, allowing an attacker to alter the query.",
+    "languages": [
+      "python",
+      "javascript",
+      "java",
+      "php"
+    ]
+  },
+  "engine": "codeql",
+  "seed_query": {
+    "codeql": {
+      "python": "${CODEQL_SEARCH_PATH}/python/ql/src/Security/CWE-089/SqlInjection.ql",
+      "javascript": "${CODEQL_SEARCH_PATH}/javascript/ql/src/Security/CWE-089/SqlInjection.ql",
+      "java": "${CODEQL_SEARCH_PATH}/java/ql/src/Security/CWE/CWE-089/SqlTainted.ql"
+    },
+    "joern": {
+      "php": "agent/seeds/joern/php.scala",
+      "javascript": "agent/seeds/joern/javascript.scala",
+      "python": "agent/seeds/joern/python.scala",
+      "java": "agent/seeds/joern/java.scala"
+    }
+  },
+  "benchmark": {
+    "python": "corpus/CWE-089/python/manifest.json",
+    "javascript": "corpus/CWE-089/javascript/manifest.json",
+    "java": "corpus/CWE-089/java/manifest.json",
+    "php": "corpus/CWE-089/php/manifest.json"
+  },
+  "synth_agent": {
+    "model_provider": "claude_cli",
+    "cli_max_turns": 20,
+    "cli_timeout": 1800,
+    "temperature": 0.1
+  }
+}

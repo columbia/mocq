@@ -1,0 +1,5 @@
+# CodeQL and the agent CLI (agy/claude) are external binaries.
+pytest>=8.0
+# JoernEngine talks to `joern --server` over the vendored cpgqls client.
+websockets>=12.0
+requests>=2.31

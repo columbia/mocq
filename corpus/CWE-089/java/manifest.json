@@ -1,0 +1,31 @@
+{
+  "cwe": "CWE-089",
+  "language": "java",
+  "source_root": ".",
+  "files": [
+    {
+      "path": "safe/StatsDaoStatic.java",
+      "label": "safe"
+    },
+    {
+      "path": "safe/UserServletParsedInt.java",
+      "label": "safe"
+    },
+    {
+      "path": "safe/UserServletPrepared.java",
+      "label": "safe"
+    },
+    {
+      "path": "vuln/LoginDaoConcat.java",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/SearchServletFormat.java",
+      "label": "vulnerable"
+    },
+    {
+      "path": "vuln/UserServletConcat.java",
+      "label": "vulnerable"
+    }
+  ]
+}

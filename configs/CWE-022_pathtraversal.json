@@ -1,0 +1,39 @@
+{
+  "vuln": {
+    "id": "CWE-022",
+    "name": "Path Traversal",
+    "description": "User-controlled request input is used to build a filesystem path without normalisation and containment checks, letting an attacker read or write files outside the intended directory.",
+    "languages": [
+      "python",
+      "javascript",
+      "java",
+      "php"
+    ]
+  },
+  "engine": "codeql",
+  "seed_query": {
+    "codeql": {
+      "python": "${CODEQL_SEARCH_PATH}/python/ql/src/Security/CWE-022/PathInjection.ql",
+      "javascript": "${CODEQL_SEARCH_PATH}/javascript/ql/src/Security/CWE-022/TaintedPath.ql",
+      "java": "${CODEQL_SEARCH_PATH}/java/ql/src/Security/CWE/CWE-022/TaintedPath.ql"
+    },
+    "joern": {
+      "php": "agent/seeds/joern/php.scala",
+      "javascript": "agent/seeds/joern/javascript.scala",
+      "python": "agent/seeds/joern/python.scala",
+      "java": "agent/seeds/joern/java.scala"
+    }
+  },
+  "benchmark": {
+    "python": "corpus/CWE-022/python/manifest.json",
+    "javascript": "corpus/CWE-022/javascript/manifest.json",
+    "java": "corpus/CWE-022/java/manifest.json",
+    "php": "corpus/CWE-022/php/manifest.json"
+  },
+  "synth_agent": {
+    "model_provider": "claude_cli",
+    "cli_max_turns": 20,
+    "cli_timeout": 1800,
+    "temperature": 0.1
+  }
+}
